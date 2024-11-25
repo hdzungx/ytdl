@@ -1,0 +1,7 @@
+google-api-python-client
+tqdm
+requests
+ttkbootstrap
+pyperclip
+yt-dlp
+pyinstaller
