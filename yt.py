@@ -6,7 +6,7 @@ import pyperclip
 import webbrowser
 import subprocess
 from tkinter import (
-    Tk, Label, Entry, Button, filedialog, StringVar, Frame, messagebox
+    Tk, Label, Entry, Button, filedialog, StringVar, Frame, messagebox, Toplevel, BOTH
 )
 from tkinter.ttk import Combobox, Progressbar, Style
 
@@ -28,6 +28,7 @@ class Config:
 class VideoDownloader:
     def __init__(self):
         self.ydl_opts = {'quiet': True}
+        self.video_info = None
         
     def fetch_formats(self, url):
         with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
@@ -298,6 +299,10 @@ class YouTubeDownloader:
 
         def fetch():
             try:
+                with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+                    # Fetch full video info
+                    self.video_info = ydl.extract_info(url, download=False)
+                
                 formats = self.downloader.fetch_formats(url)
                 self.root.after(0, lambda: self.update_formats(formats))
                 self.root.after(
@@ -315,6 +320,76 @@ class YouTubeDownloader:
 
         threading.Thread(target=fetch, daemon=True).start()
 
+    def start_download(self):
+        if not self._validate_download():
+            return
+            
+        if self.download_thread and self.download_thread.is_alive():
+            return
+
+        # Show download confirmation popup
+        self._show_download_confirmation()
+
+    def _show_download_confirmation(self):
+        # Create confirmation popup
+        confirm_window = Toplevel(self.root)
+        confirm_window.title("Xác nhận tải video")
+        confirm_window.geometry("400x300")
+        confirm_window.transient(self.root)
+        confirm_window.grab_set()
+
+        # Get selected format details
+        selected_format_str = self.quality_var.get()
+        selected_format_id = selected_format_str.split(" - ")[0]
+
+        # Find the full format details
+        selected_format = None
+        for f in self.video_info['formats']:
+            if f['format_id'] == selected_format_id:
+                selected_format = f
+                break
+
+        # Create confirmation labels
+        Label(confirm_window, text="Xác nhận tải video", font=("Helvetica", 14, "bold")).pack(pady=10)
+
+        details_frame = Frame(confirm_window)
+        details_frame.pack(padx=20, pady=10, fill=BOTH, expand=True)
+
+        details = [
+            ("Tiêu đề:", self.video_info.get('title', 'Không xác định')),
+            ("Kênh:", self.video_info.get('uploader', 'Không xác định')),
+            ("Định dạng:", selected_format.get('ext', 'Không xác định')),
+            ("Độ phân giải:", f"{selected_format.get('height', 'N/A')}p"),
+            ("Bitrate:", f"{selected_format.get('tbr', 'N/A')} kbps"),
+            ("Kích thước (ước tính):", f"{selected_format.get('filesize', 0) / (1024*1024):.2f} MB" if selected_format.get('filesize') else "Chưa xác định"),
+        ]
+
+        for label, value in details:
+            row = Frame(details_frame)
+            row.pack(fill='x', pady=5)
+            Label(row, text=label, font=("Helvetica", 10, "bold"), width=15, anchor='w').pack(side='left')
+            Label(row, text=value, font=("Helvetica", 10), anchor='w', wraplength=300, justify='left').pack(side='left')
+
+        # Buttons frame
+        button_frame = Frame(confirm_window)
+        button_frame.pack(pady=10)
+
+        def confirm_download():
+            confirm_window.destroy()
+            self._reset_progress()
+            self.disable_widgets()
+            self.download_thread = threading.Thread(
+                target=self.download_video,
+                daemon=True
+            )
+            self.download_thread.start()
+
+        def cancel_download():
+            confirm_window.destroy()
+
+        Button(button_frame, text="Tải xuống", command=confirm_download).pack(side='left', padx=10)
+        Button(button_frame, text="Hủy", command=cancel_download).pack(side='left', padx=10)
+
     def update_formats(self, formats):
         self.available_formats = formats
         self.quality_combo['values'] = ["Chọn chất lượng video"] + formats
@@ -327,13 +402,23 @@ class YouTubeDownloader:
         if self.download_thread and self.download_thread.is_alive():
             return
 
-        self._reset_progress()
-        self.disable_widgets()
-        self.download_thread = threading.Thread(
-            target=self.download_video,
-            daemon=True
+        # Create a confirmation dialog
+        confirm = messagebox.askyesno(
+            "Xác nhận tải video", 
+            f"Bạn có chắc muốn tải video này không?\n\n"
+            f"Tiêu đề: {self.video_info.get('title', 'Không xác định')}\n"
+            f"Định dạng: {self.quality_var.get()}"
         )
-        self.download_thread.start()
+        
+        if confirm:
+            self._reset_progress()
+            self.disable_widgets()
+            self.download_thread = threading.Thread(
+                target=self.download_video,
+                daemon=True
+            )
+            self.download_thread.start()
+
 
     def _validate_download(self):
         if not self.url_entry.get():
