@@ -241,6 +241,16 @@ class YouTubeDownloader:
         self.root.update_idletasks()
         self.root.minsize(self.root.winfo_width(), self.root.winfo_height())
 
+    def disable_widgets(self):
+        for child in self.root.winfo_children():
+            if isinstance(child, (Button, Entry, Combobox)) and child.cget("text") not in ["GitHub", "Telegram"]:
+                child.config(state="disabled")
+
+    def enable_widgets(self):
+        for child in self.root.winfo_children():
+            if isinstance(child, (Button, Entry, Combobox)):
+                child.config(state="normal")
+
     def open_link(self, url):
         try:
             webbrowser.open(url)
@@ -318,12 +328,12 @@ class YouTubeDownloader:
             return
 
         self._reset_progress()
+        self.disable_widgets()
         self.download_thread = threading.Thread(
             target=self.download_video,
             daemon=True
         )
         self.download_thread.start()
-        self.download_button.config(state="disabled")
 
     def _validate_download(self):
         if not self.url_entry.get():
@@ -357,8 +367,6 @@ class YouTubeDownloader:
             messagebox.showerror("Lỗi", f"Không thể tải video: {str(e)}")
         except Exception as e:
             messagebox.showerror("Lỗi", f"Đã xảy ra lỗi: {str(e)}")
-        finally:
-            self.download_button.config(state="normal")
 
     def _progress_hook(self, d):
         if d['status'] == 'downloading':
@@ -405,6 +413,7 @@ class YouTubeDownloader:
         self.progress_var.set(100)
         self.progress_bar.update_idletasks()
         self.status_var.set("Tải xong! Video đã được lưu.")
+        self.enable_widgets()
         self.root.update_idletasks()
 
     def open_output_folder(self):
