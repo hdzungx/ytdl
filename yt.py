@@ -460,39 +460,54 @@ class YouTubeDownloader:
             self._finish_download()
 
     def _update_download_progress(self, d):
+        # Lấy thông tin tiến trình tải
         downloaded_bytes = d.get('downloaded_bytes', 0)
         total_bytes = d.get('total_bytes', 0) or d.get('total_bytes_estimate', 0)
-        speed = d.get('speed', 0)
+        speed = d.get('speed', "Unknown")  # Gán "Unknown" nếu không có giá trị
 
-        if total_bytes > 0:
+        # Kiểm tra total_bytes
+        if total_bytes == "Unknown" or not total_bytes:
+            progress = 0
+            total_str = "Unknown"
+        else:
             progress = min((downloaded_bytes / total_bytes) * 100, 100)
-            self.progress_var.set(progress)
-            self.progress_bar.update_idletasks()
-
-            downloaded_str = self._format_size(downloaded_bytes)
             total_str = self._format_size(total_bytes)
-            speed_str = self._format_size(speed) + "/s"
 
-            eta = d.get('eta', None)
-            eta_str = self._format_eta(eta)
+        # Cập nhật giá trị tiến trình
+        self.progress_var.set(progress)
+        self.progress_bar.update_idletasks()
 
-            self.status_var.set(
-                f"Đang tải: {progress:.1f}% ({downloaded_str} / {total_str}) - "
-                f"Tốc độ: {speed_str} - {eta_str}"
-            )
-            self.root.update_idletasks()
+        # Định dạng thông tin tải về
+        downloaded_str = self._format_size(downloaded_bytes)
+        speed_str = self._format_size(speed) + "/s" if speed != "Unknown" else "Unknown"
 
-    def _format_size(self, bytes):
+        # Thời gian ước tính (ETA)
+        eta = d.get('eta', "Unknown")
+        eta_str = self._format_eta(eta) if eta != "Unknown" else "Đang tính..."
+
+        # Cập nhật trạng thái hiển thị
+        self.status_var.set(
+            f"Đang tải: {progress:.1f}% ({downloaded_str} / {total_str}) - "
+            f"Tốc độ: {speed_str} - {eta_str}"
+        )
+        self.root.update_idletasks()
+
+    def _format_size(self, bytes_or_unknown):
+        if bytes_or_unknown == "Unknown" or not bytes_or_unknown:
+            return "Unknown"
+        bytes = bytes_or_unknown  # Đảm bảo bytes là số
         if bytes >= 1024 * 1024 * 1024:  # >= 1GB
             return f"{bytes / (1024 * 1024 * 1024):.2f}GB"
         return f"{bytes / (1024 * 1024):.2f}MB"
 
-    def _format_eta(self, eta):
-        if eta:
-            eta_minutes = eta // 60
-            eta_seconds = eta % 60
-            return f"ETA: {eta_minutes:.0f} phút {eta_seconds:.0f} giây"
-        return "Đang tính..."
+    def _format_eta(self, eta_or_unknown):
+        if eta_or_unknown == "Unknown" or not eta_or_unknown:
+            return "Đang tính..."
+        eta = eta_or_unknown  # Đảm bảo eta là số
+        eta_minutes = eta // 60
+        eta_seconds = eta % 60
+        return f"ETA: {eta_minutes:.0f} phút {eta_seconds:.0f} giây"
+
 
     def _finish_download(self):
         self.progress_var.set(100)
