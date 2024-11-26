@@ -116,7 +116,7 @@ class YouTubeDownloader:
     def _create_header(self):
         Label(
             self.root,
-            text="YouTube Downloader By HDZ",
+            text="YouTube Downloader",
             font=("Helvetica", 14, "bold"),
             fg="#333"
         ).grid(row=0, column=0, columnspan=3, pady=10, sticky="n")
