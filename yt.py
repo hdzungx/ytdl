@@ -5,6 +5,7 @@ import yt_dlp
 import pyperclip
 import webbrowser
 import subprocess
+import requests
 from tkinter import (
     Tk, Label, Entry, Button, filedialog, StringVar, Frame, messagebox, Toplevel, BOTH
 )
@@ -88,6 +89,7 @@ class UIManager:
 
 class YouTubeDownloader:
     def __init__(self):
+        self.version = "1.0.0"
         self.root = Tk()
         self.ui_manager = UIManager(self.root)
         self.downloader = VideoDownloader()
@@ -96,6 +98,8 @@ class YouTubeDownloader:
         self._init_variables()
         self._create_gui()
         self.download_thread = None
+        self.footer_update_label = None 
+        self.check_for_updates()
         
     def _init_variables(self):
         self.output_path = StringVar(value=self.config.get("output_dir", ""))
@@ -216,7 +220,7 @@ class YouTubeDownloader:
         
         Label(
             footer,
-            text="Version 1.0.0",
+            text=f"Version {self.version}",
             font=("Helvetica", 8),
             fg="#888"
         ).pack(side="left", padx=10)
@@ -241,6 +245,64 @@ class YouTubeDownloader:
         
         self.root.update_idletasks()
         self.root.minsize(self.root.winfo_width(), self.root.winfo_height())
+
+    def check_for_updates(self):
+        url = "https://api.github.com/repos/hdzungx/ytdl/releases/latest"
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+            latest_version = data.get("tag_name", None)
+            
+            # Kiểm tra nếu phiên bản mới có sự khác biệt
+            if latest_version != self.version:
+                self._show_update_message(latest_version)
+            else:
+                self._clear_update_message()
+        except requests.RequestException as e:
+            # Hiển thị lỗi nếu không thể kiểm tra phiên bản
+            self._show_error_message(f"Không thể kiểm tra phiên bản")
+
+    def _show_update_message(self, latest_version):
+        update_message = f"Có phiên bản mới {latest_version}! Tải xuống từ GitHub."
+        github_url = "https://github.com/hdzungx/ytdl/releases/latest"  # URL của trang GitHub
+
+        # Cập nhật thông báo nếu đã có footer_update_label
+        if self.footer_update_label:
+            self.footer_update_label.config(text=update_message)
+        else:
+            # Tạo mới thông báo nếu chưa có
+            self.footer_update_label = Label(
+                self.root, 
+                text=update_message,
+                font=("Helvetica", 8),
+                fg="red",
+                anchor="e",  # Canh phải
+                cursor="hand2"  # Thay đổi con trỏ khi di chuột vào
+            )
+            self.footer_update_label.grid(row=8, column=2, padx=10, sticky="e")
+
+        # Gắn sự kiện nhấp chuột để mở trang GitHub
+        self.footer_update_label.bind("<Button-1>", lambda event: webbrowser.open(github_url))
+
+    def _clear_update_message(self):
+        # Xóa thông báo nếu không có phiên bản mới
+        if self.footer_update_label:
+            self.footer_update_label.config(text="")
+            
+    def _show_error_message(self, message):
+        # Hiển thị thông báo lỗi trong GUI thay vì in ra console
+        if self.footer_update_label:
+            self.footer_update_label.config(text=message, fg="orange")
+        else:
+            self.footer_update_label = Label(
+                self.root, 
+                text=message,
+                font=("Helvetica", 8),
+                fg="black",
+                anchor="e"
+            )
+            self.footer_update_label.grid(row=8, column=2, padx=10, sticky="e")
 
     def disable_widgets(self):
         for child in self.root.winfo_children():
