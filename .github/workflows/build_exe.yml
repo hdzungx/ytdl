@@ -42,7 +42,7 @@ jobs:
 
     # 5. Upload the artifact (EXE file)
     - name: Upload EXE
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: built-exe
         path: dist/hdz_yt_downloader.exe  # Đường dẫn đến file .exe sau khi build
