@@ -38,7 +38,7 @@ jobs:
     # 4. Build EXE using PyInstaller
     - name: Build EXE
       run: |
-        pyinstaller --onefile --name hdz_yt_downloader yt.py
+        pyinstaller --onefile --name hdz_yt_downloader --windowed yt.py
 
     # 5. Upload the artifact (EXE file)
     - name: Upload EXE
